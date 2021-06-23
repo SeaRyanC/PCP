@@ -48,19 +48,31 @@ namespace PCPanelController {
                 switch (button) {
                     case 1:
                         if (action == PressType.Short) {
-                            SendInputHelper.SimulateKey(SendInputHelper.ScanCodeShort.MEDIA_PREV_TRACK);
+                            if (ActiveProcessName() == "vmconnect") {
+                                SpotifyMsg(Win32.APPCOMMAND_MEDIA_PREVIOUSTRACK);
+                            } else {
+                                SendInputHelper.SimulateKey(SendInputHelper.ScanCodeShort.MEDIA_PREV_TRACK);
+                            }
                         }
                         break;
                     case 2:
                         if (action == PressType.Short) {
-                            SendInputHelper.SimulateKey(SendInputHelper.ScanCodeShort.MEDIA_PLAY_PAUSE);
+                            if (ActiveProcessName() == "vmconnect") {
+                                SpotifyMsg(Win32.APPCOMMAND_MEDIA_PLAY_PAUSE);
+                            } else {
+                                SendInputHelper.SimulateKey(SendInputHelper.ScanCodeShort.MEDIA_PLAY_PAUSE);
+                            }
                         }
                         break;
                     case 3:
                         if (action == PressType.Hold) {
                             Actions.ToggleDisplayMode();
                         } else if (action == PressType.Short) {
-                            SendInputHelper.SimulateKey(SendInputHelper.ScanCodeShort.MEDIA_NEXT_TRACK);
+                            if (ActiveProcessName() == "vmconnect") {
+                                SpotifyMsg(Win32.APPCOMMAND_MEDIA_NEXTTRACK);
+                            } else {
+                                SendInputHelper.SimulateKey(SendInputHelper.ScanCodeShort.MEDIA_NEXT_TRACK);
+                            }
                         }
                         break;
                     case 4:
@@ -70,6 +82,27 @@ namespace PCPanelController {
                         break;
                 }
             });
+        }
+
+        private static string ActiveProcessName() {
+            IntPtr hWnd = Win32.GetForegroundWindow();
+            foreach (var p in Process.GetProcesses()) {
+                if (p.MainWindowHandle == hWnd) {
+                    return p.ProcessName;
+                }
+            }
+            return "";
+        }
+
+        private static void SpotifyMsg(uint msg) {
+            foreach (var p in Process.GetProcesses()) {
+                if (p.ProcessName.IndexOf("spotify", 0, StringComparison.InvariantCultureIgnoreCase) >= 0) {
+                    if (p.MainWindowHandle != IntPtr.Zero) {
+                        Win32.PostMessage(p.MainWindowHandle, Win32.WM_APPCOMMAND, 0, msg << 16);
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -132,7 +165,7 @@ namespace PCPanelController {
                             }
 
                             downTimes[buttonZeroBased] = DateTime.MaxValue;
-                        } 
+                        }
                     }
                 }
             }
@@ -163,16 +196,35 @@ namespace PCPanelController {
     }
 
     static class Win32 {
+
         public static IntPtr HWND_BROADCAST = (IntPtr)0xFFFF;
         public static int SC_MONITORPOWER = 0xF170;
         public static uint WM_SYSCOMMAND = 0x112;
+        public static uint WM_KEYDOWN = 0x100;
+        public static uint WM_KEYUP = 0x101;
+        public static uint WM_APPCOMMAND = 0x319;
+        public static uint APPCOMMAND_MEDIA_NEXTTRACK = 11;
+        public static uint APPCOMMAND_MEDIA_PREVIOUSTRACK = 12;
+        public static uint APPCOMMAND_MEDIA_PLAY_PAUSE = 14;
+        [DllImport("user32.dll")]
+        public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")]
         public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, int wParam, IntPtr lParam);
         [DllImport("user32.dll")]
         public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")]
         public static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, int wParam, IntPtr lParam);
         [DllImport("user32.dll")]
         public static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+        [DllImport("user32.dll")]
+        public static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, uint wParam, int lParam);
+        [DllImport("user32.dll")]
+        public static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, uint wParam, uint lParam);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
     }
 }
